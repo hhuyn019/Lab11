@@ -155,6 +155,20 @@ ISR(TIMER1_COMPA_vect)
 	}
 }
 
+unsigned char SetBit(unsigned char pin, unsigned char number, unsigned char bin_value) 
+{
+	return (bin_value ? pin | (0x01 << number) : pin & ~(0x01 << number));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//Functionality - Gets bit from a PINx
+//Parameter: Takes in a uChar for a PINx and the pin number
+//Returns: The value of the PINx
+unsigned char GetBit(unsigned char port, unsigned char number) 
+{
+	return ( port & (0x01 << number) );
+}
+
 unsigned char GetKeypadKey() {
 	PORTC = 0xEF;
 	asm("nop");
@@ -197,10 +211,12 @@ typedef struct _task {
 char* text = "C120B is Legend... wait for it DARY! ";
 unsigned char cnt = 0;
 unsigned char disp[16];
+unsigned char val = 0x00;
+unsigned char temp = 0x00;
 
-enum States{WAIT} state;
+enum States{WAIT} stateee;
 	
-int tick(state){
+int tick(stateee){
 		
 			for (unsigned int k = 0; k < 16; k++) {
 				disp[k] = text[(cnt + k) % 38];
@@ -212,7 +228,7 @@ int tick(state){
 			
 	
 	
-	return state;
+	return stateee;
 }
 
 unsigned long int findGCD(unsigned long int a, unsigned long int b) {
@@ -226,24 +242,24 @@ unsigned long int findGCD(unsigned long int a, unsigned long int b) {
 	return 0;
 }
 
-enum states {WAIT, PRESS} state;
+enum states {WAIT, PRESS} statee;
 
-int Tick(int state) {
-	switch(state) {
+int Tick(int statee) {
+	switch(statee) {
 		case WAIT:
 			if (temp == 0x1F) {
-				state = WAIT;
+				statee = WAIT;
 				break;
 			} else {
-				state = PRESS;
+				statee = PRESS;
 				break;
 			}
 		case PRESS:
-			state = WAIT;
+			statee = WAIT;
 			break;
 	}
 	
-	switch(state) {
+	switch(statee) {
 		case WAIT:
 			temp = GetKeypadKey();
 			break;
