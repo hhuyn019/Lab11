@@ -10,7 +10,92 @@
 #include <avr/io.h>
 #ifdef _SIMULATE_
 #include "simAVRHeader.h"
+#include <avr/interrupt.h>
+#include <stdio.h>
 #endif
+
+#define SET_BIT(p,i) ((p) |= (1 << (i)))
+#define CLR_BIT(p,i) ((p) &= ~(1 << (i)))
+#define GET_BIT(p,i) ((p) & (1 << (i)))
+          
+/*-------------------------------------------------------------------------*/
+
+#define DATA_BUS PORTC		// port connected to pins 7-14 of LCD display
+#define CONTROL_BUS PORTD	// port connected to pins 4 and 6 of LCD disp.
+#define RS 6			// pin number of uC connected to pin 4 of LCD disp.
+#define E 7			// pin number of uC connected to pin 6 of LCD disp.
+
+/*-------------------------------------------------------------------------*/
+
+void LCD_init();
+void LCD_ClearScreen(void);
+void LCD_WriteCommand (unsigned char Command);
+void LCD_Cursor (unsigned char column);
+void LCD_DisplayString(unsigned char column ,const unsigned char *string);
+void delay_ms(int miliSec);
+
+void LCD_ClearScreen(void) {
+   LCD_WriteCommand(0x01);
+}
+
+void LCD_init(void) {
+
+    //wait for 100 ms.
+	delay_ms(100);
+	LCD_WriteCommand(0x38);
+	LCD_WriteCommand(0x06);
+	LCD_WriteCommand(0x0f);
+	LCD_WriteCommand(0x01);
+	delay_ms(10);						 
+}
+
+void LCD_WriteCommand (unsigned char Command) {
+   CLR_BIT(CONTROL_BUS,RS);
+   DATA_BUS = Command;
+   SET_BIT(CONTROL_BUS,E);
+   asm("nop");
+   CLR_BIT(CONTROL_BUS,E);
+   delay_ms(2); // ClearScreen requires 1.52ms to execute
+}
+
+void LCD_WriteData(unsigned char Data) {
+   SET_BIT(CONTROL_BUS,RS);
+   DATA_BUS = Data;
+   SET_BIT(CONTROL_BUS,E);
+   asm("nop");
+   CLR_BIT(CONTROL_BUS,E);
+   delay_ms(1);
+}
+
+void LCD_DisplayString( unsigned char column, const unsigned char* string) {
+   LCD_ClearScreen();
+   unsigned char c = column;
+   while(*string) {
+      LCD_Cursor(c++);
+      LCD_WriteData(*string++);
+   }
+}
+
+void LCD_Cursor(unsigned char column) {
+   if ( column < 17 ) { // 16x1 LCD: column < 9
+						// 16x2 LCD: column < 17
+      LCD_WriteCommand(0x80 + column - 1);
+   } else {
+      LCD_WriteCommand(0xB8 + column - 9);	// 16x1 LCD: column - 1
+											// 16x2 LCD: column - 9
+   }
+}
+
+void delay_ms(int miliSec) //for 8 Mhz crystal
+
+{
+    int i,j;
+    for(i=0;i<miliSec;i++)
+    for(j=0;j<775;j++)
+  {
+   asm("nop");
+  }
+}
 
 unsigned char GetKeypadKey() {
 	PORTC = 0xEF;
@@ -51,84 +136,25 @@ typedef struct _task {
 	int (*TickFct)(int);
 } task;
 
-unsigned char val = 0x00;
-unsigned char temp = 0x00;
-unsigned char led0_output = 0x00;
-unsigned char led1_output = 0x00;
-unsigned char pause = 0;
+char* text = "C120B is Legend... wait for it DARY! ";
+unsigned char cnt = 0;
+unsigned char disp[16];
 
-enum pauseButtonSM_States {pauseButton_wait, pauseButton_press, pauseButton_release} pauseButtonSM_State;
-
-int pauseButtonSMTick(int pauseButtonSM_State) {
-	unsigned char press = ~PINA & 0x01;
-	switch(pauseButtonSM_State) {
-		case pauseButton_wait:
-			pauseButtonSM_State = press == 0x01? pauseButton_press: pauseButton_wait; break;
-		case pauseButton_press:
-			pauseButtonSM_State = pauseButton_release; break;
-		case pauseButton_release:
-			pauseButtonSM_State = press == 0x00? pauseButton_wait: pauseButton_press; break;
-		default: pauseButtonSM_State = pauseButton_wait; break;
-	}
-	switch(pauseButtonSM_State) {
-		case pauseButton_wait: break;
-		case pauseButton_press:
-			pause = (pause == 0) ? 1 : 0;
-			break;
-		case pauseButton_release: break;
-	}
-	return pauseButtonSM_State;
-}
-
-enum toggleLED0_States {toggleLED0_wait, toggleLED0_blink} toggleLED0_State;
-
-int toggleLED0SMTick(int toggleLED0_State) {
-	switch(toggleLED0_State) {
-		case toggleLED0_wait: toggleLED0_State = !pause? toggleLED0_blink: toggleLED0_wait; break;
-		case toggleLED0_blink: toggleLED0_State = pause? toggleLED0_wait: toggleLED0_blink; break;
-		default: toggleLED0_State = toggleLED0_wait; break;
-	}
-	switch(toggleLED0_State) {
-		case toggleLED0_wait: break;
-		case toggleLED0_blink:
-			led0_output = (led0_output == 0x00) ? 0x01 : 0x00;
-			break;
-	}
-	return toggleLED0_State;
-}
-
-enum toggleLED1_States {toggleLED1_wait, toggleLED1_blink} toggleLED1_State;
-
-int toggleLED1SMTick(int toggleLED1_State) {
-	switch(toggleLED1_State) {
-		case toggleLED1_wait: toggleLED1_State = !pause? toggleLED1_blink: toggleLED1_wait; break;
-		case toggleLED1_blink: toggleLED1_State = pause? toggleLED1_wait: toggleLED1_blink; break;
-		default: toggleLED1_State = toggleLED1_wait; break;
-	}
-	switch(toggleLED1_State) {
-		case toggleLED1_wait: break;
-		case toggleLED1_blink:
-			led1_output = (led1_output == 0x00) ? 0x01 : 0x00;
-			break;
-	}
-	return toggleLED1_State;
-}
-
-enum display_States {display_display} display_State;
-
-int displaySMTick(int display_State) {
-	unsigned char output;
-	switch(display_State) {
-		case display_display: display_State = display_display; break;
-		default: display_State = display_display; break;
-	}
-	switch(dislay_State) {
-		case display_display:
-			output = led0_output | led1_output << 1;
-			break;
-	}
-	PORTB = output;
-	return display_State;
+enum States{WAIT} state;
+	
+int tick(state){
+		
+			for (unsigned int k = 0; k < 16; k++) {
+				disp[k] = text[(cnt + k) % 38];
+			}
+			cnt = (cnt + 1) % 38;
+			LCD_DisplayString(1, disp);
+			state = WAIT;
+			
+			
+	
+	
+	return state;
 }
 
 unsigned long int findGCD(unsigned long int a, unsigned long int b) {
@@ -173,34 +199,21 @@ int Tick(int state) {
 int main(void) {
     /* Insert DDR and PORT initializations */
 	unsigned char x;
+	DDRA = 0x00; PORTA = 0xFF;
 	DDRB = 0xFF; PORTB = 0x00;
 	DDRC = 0xF0; PORTC = 0x0F;
-	static _task task1, task2, task3, task4;
-	_task *tasks[] = } &task1, &task2, &task3, &task4 };
+	static _task task1;
+	_task *tasks[] = {&task1};
 	const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
 
-	task1.state = start;
+	task1.state = -1;
 	task1.period = 50;
 	task1.elapsedTime = task1.period;
-	task1.TickFct = &pauseButtonToggleSMTick;
+	task1.TickFct = &Tick;
 
-	task2.state = start;
-	task2.period = 500;
-	task2.elapsedTime = task2.period;
-	task2.TickFct = &toggleLED0SMTick;
-
-	task3.state = start;
-	task3.period = 1000;
-	task3.elapsedTime = task3.period;
-	task3.TickFct = &toggleLED1SMTick;
-
-	task4.state = start;
-	task4.period = 10;
-	task4.elapsedTime = task4.period;
-	task4.TickFct = &displaySMTick;
-
-	TimerSet(GCD);
+	TimerSet(task1.period);
 	TimerOn();
+	LCD_init();
 
 	unsigned short i;
 
