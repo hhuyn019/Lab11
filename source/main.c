@@ -34,7 +34,7 @@ unsigned char GetKeypadKey() {
 	if (GetBit(PINC,2)==0) { return('9'); }
 	if (GetBit(PINC,3)==0) { return('#'); }
 
-	PORTC = 0xBF;
+	PORTC = 0x7F;
 	asm("nop");
 	if (GetBit(PINC,0)==0) { return('A'); }
 	if (GetBit(PINC,1)==0) { return('B'); }
@@ -129,13 +129,61 @@ int displaySMTick(int display_State) {
 	return display_State;
 }
 
+unsigned long int findGCD(unsigned long int a, unsigned long int b) {
+	unsigned long int c;
+	while(1) {
+		c = a%b;
+		if(c==0) {return b;}
+		a = b;
+		b = c;
+	}
+	return 0;
+}
+
 int main(void) {
     /* Insert DDR and PORT initializations */
 	unsigned char x;
 	DDRB = 0xFF; PORTB = 0x00;
 	DDRC = 0xF0; PORTC = 0x0F;
+	static _task task1, task2, task3, task4;
+	_task *tasks[] = } &task1, &task2, &task3, &task4 };
+	const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
+
+	task1.state = start;
+	task1.period = 50;
+	task1.elapsedTime = task1.period;
+	task1.TickFct = &pauseButtonToggleSMTick;
+
+	task2.state = start;
+	task2.period = 500;
+	task2.elapsedTime = task2.period;
+	task2.TickFct = &toggleLED0SMTick;
+
+	task3.state = start;
+	task3.period = 1000;
+	task3.elapsedTime = task3.period;
+	task3.TickFct = &toggleLED1SMTick;
+
+	task4.state = start;
+	task4.period = 10;
+	task4.elapsedTime = task4.period;
+	task4.TickFct = &displaySMTick;
+
+	TimerSet(GCD);
+	TimerOn();
+
+	unsigned short i;
+
     /* Insert your solution below */
 	while (1) {
+		for(i = 0; i < numTasks; ++i) {
+			if(tasks[i]->elapsedTime == tasks[i]->period) {
+				tasks[i]->state = tasks[i]->TickFct(tasks[i]->state);
+				tasks[i]->elapsedTime = 0;
+			}
+			tasks[i]->elapsedTime += 1;
+		}
+		
 		x = GetKeypadKey();
 		switch(x) {
 			case '\0': PORTB = 0x1F; break;
@@ -156,6 +204,9 @@ int main(void) {
 			case '#': PORTB = 0x0F; break;
 			case '0': PORTB = 0x00; break;
 			default: PORTB = 0x1B; break;
+				
+			while(!TimerFlag);
+			TimerFlag = 0;
 		}
 	}
 	return 1;
