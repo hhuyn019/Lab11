@@ -214,7 +214,7 @@ unsigned char disp[16];
 unsigned char val = 0x00;
 unsigned char temp = 0x00;
 
-enum States{WAIT} stateee;
+enum States{WAIT1} stateee;
 	
 int tick(stateee){
 		
@@ -223,7 +223,7 @@ int tick(stateee){
 			}
 			cnt = (cnt + 1) % 38;
 			LCD_DisplayString(1, disp);
-			state = WAIT;
+			stateee = WAIT1;
 			
 			
 	
