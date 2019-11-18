@@ -51,6 +51,8 @@ typedef struct _task {
 	int (*TickFct)(int);
 } task;
 
+unsigned char val = 0x00;
+unsigned char temp = 0x00;
 unsigned char led0_output = 0x00;
 unsigned char led1_output = 0x00;
 unsigned char pause = 0;
@@ -138,6 +140,34 @@ unsigned long int findGCD(unsigned long int a, unsigned long int b) {
 		b = c;
 	}
 	return 0;
+}
+
+enum states {WAIT, PRESS} state;
+
+int Tick(int state) {
+	switch(state) {
+		case WAIT:
+			if (temp == 0x1F) {
+				state = WAIT;
+				break;
+			} else {
+				state = PRESS;
+				break;
+			}
+		case PRESS:
+			state = WAIT;
+			break;
+	}
+	
+	switch(state) {
+		case WAIT:
+			temp = GetKeypadKey();
+			break;
+		case PRESS:
+			val = temp;
+			temp = 0;
+			break;
+	}
 }
 
 int main(void) {
