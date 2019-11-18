@@ -199,8 +199,8 @@ int Tick(int state) {
 int main(void) {
     /* Insert DDR and PORT initializations */
 	unsigned char x;
-	DDRA = 0x00; PORTA = 0xFF;
-	DDRB = 0xFF; PORTB = 0x00;
+	DDRA = 0xFF; PORTA = 0x00;
+	DDRB = 0x00; PORTB = 0xFF;
 	DDRC = 0xF0; PORTC = 0x0F;
 	static _task task1;
 	_task *tasks[] = {&task1};
