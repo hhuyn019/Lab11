@@ -35,7 +35,7 @@ typedef struct _task {
 	int (*TickFct)(int);
 } task;
 
-enum LCD_States {wait, next} LCD_State;
+enum LCD_States {WAIT, next} LCD_State;
 int start = 0;
 int end = 1;
 int pos = 16;
@@ -49,9 +49,9 @@ tick() {
 			start = 1;
 			end = 1;
 			pos = 16;
-			LCD_State = wait;
+			LCD_State = WAIT;
 			break;
-		case wait:
+		case WAIT:
 			if(pos < 1) {
 				LCD_State = next;
 			}
@@ -61,14 +61,14 @@ tick() {
 				start = 1;
 				end = 1;
 				pos = 16;
-				LCD_State = wait;
+				LCD_State = WAIT;
 			}
 			break;
 		default:
 			break;
 	}
 	switch(LCD_State) {
-		case wait:
+		case WAIT:
 			strncpy(tempString, myString, end);
 			LCD_DisplayString(pos, tempString);
 			++end;
