@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "io.h"
+#include "scheduler.h"
 
 volatile unsigned char TimerFlag = 0;
 
@@ -16,33 +17,13 @@ unsigned char GetBit(unsigned char port, unsigned char number)
 	return ( port & (0x01 << number) );
 }
 
-unsigned long int findGCD(unsigned long int a, unsigned long int b)
-{
-	unsigned long int c;
-	while(1){
-		c = a%b;
-		if(c==0) return b;
-		a = b;
-        b = c;
-	}
-	return 0;
-}
-
-typedef struct _task {
-	signed char state;
-	unsigned long int period; 
-	unsigned long int elapsedTime;
-	int (*TickFct)(int);
-} task;
-
-enum LCD_States {WAIT, next} LCD_State;
 int start = 0;
 int end = 1;
 int pos = 16;
 unsigned char myString[] = "CS120B is Legend... wait for it DARY!";
-unsigned char tempString[100];
+unsigned char tempString[50];
 
-
+enum LCD_States {WAIT, next} LCD_State;
 tick() {
 	switch(LCD_State) {
 		case -1:
